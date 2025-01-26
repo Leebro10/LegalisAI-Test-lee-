@@ -4,7 +4,7 @@ A specialized legal chatbot leveraging the power of the **InLegalBERT** model to
 ---
 
 ## 🔧 **Principal Architecture** (Model + Training)
-1. **Model:** InLegalBERT  
+1. **Model:** [InLegalBERT Model](https://huggingface.co/law-ai/InLegalBERT) 
 2. **Training Data:** Real Estate Legal Cases Dataset
 
 ---
