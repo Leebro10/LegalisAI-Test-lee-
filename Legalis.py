@@ -11,7 +11,7 @@ tokenizer = BertTokenizer.from_pretrained(model_path)
 model = BertModel.from_pretrained(model_path)
 
 # Load cases from JSON
-with open("cases.json", "r", encoding="utf-8") as file:
+with open("finalcases.json", "r", encoding="utf-8") as file:
     cases_data = json.load(file)
 
 # Function to encode text using BERT
@@ -34,13 +34,15 @@ st.title("LegalisAI: Real Estate Legal Case Assistant ⚖️ ")
 
 user_input = st.text_area("Enter your case description:", height=150)
 
-if st.button("Find Relevant Sections"):
+if st.button("Analyse Case"):
     if user_input.strip():
         best_case, similarity_score = find_relevant_case(user_input, cases_data)
 
         st.subheader("🔎 Most Relevant Case Found:")
         st.write(f"**Case ID:** {best_case['case_id']}")
         st.write(f"**Case Title:** {best_case['case_title']}")
+        st.write(f"**Case PDF Link:** [Read More Here...]( {best_case['case_link']} )")  # Case Link (PDF Provided)
+        #st.write(f"**Case PDF Link:** {best_case['case_link']}")  #Case Link (PDF Provided)
         st.write(f"**Relevancy Score:** {round(similarity_score, 2)}")
         st.write("---")
 

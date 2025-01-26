@@ -3,3 +3,5 @@ legal_cases.json
 __pycache__
 legalis_model
 results
+finalcases.json
+trainer.py
