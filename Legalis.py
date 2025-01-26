@@ -30,7 +30,7 @@ def find_relevant_case(user_input, cases):
     return cases[best_match_index], similarities[best_match_index]
 
 # Streamlit UI
-st.title("LegalisAI: Real Estate Legal Case Assistant")
+st.title("LegalisAI: Real Estate Legal Case Assistant ⚖️ ")
 
 user_input = st.text_area("Enter your case description:", height=150)
 
