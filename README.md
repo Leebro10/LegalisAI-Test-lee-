@@ -1,5 +1,5 @@
 # LegalisAI: Real Estate Legal Case Assistant  
-A specialized legal chatbot leveraging the power of the **InLegalBERT** model to respond to user queries related to real estate cases.
+A specialized legal assistant leveraging the power of the **InLegalBERT** model to respond to user queries related to real estate cases (Info. Retrieval + Deep Learning Model) based solution.
 
 ---
 
