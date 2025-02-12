@@ -1,31 +1,54 @@
 import streamlit as st
 import json
 import torch
-from transformers import BertTokenizer, BertModel
+from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from googletrans import Translator
+import os
 
-# Load the trained model and tokenizer
-model_path = "./legalis_model"
-tokenizer = BertTokenizer.from_pretrained(model_path)
-model = BertModel.from_pretrained(model_path)
+translator = Translator()
+
+# Load the trained models and tokenizers
+legalis_model_path = "./legalis_model"
+faq_model_path = "./faq_model"
+
+tokenizer_legalis = AutoTokenizer.from_pretrained(legalis_model_path)
+model_legalis = AutoModel.from_pretrained(legalis_model_path)
+
+tokenizer_faq = AutoTokenizer.from_pretrained(faq_model_path)
+model_faq = AutoModel.from_pretrained(faq_model_path)
 
 # Load cases from JSON
 with open("finalcases.json", "r", encoding="utf-8") as file:
     cases_data = json.load(file)
 
+# Load FAQ data
+def load_faq_data(file_path):
+    faq_data = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            faq_data.append(json.loads(line))
+    return faq_data
+
+faq_data = load_faq_data("QandA.jsonl")
+
 # Function to encode text using BERT
-def encode_text(text):
+def encode_text(text, tokenizer, model):
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
     with torch.no_grad():
         outputs = model(**inputs)
     return outputs.last_hidden_state.mean(dim=1).numpy()
 
-nombres = st.slider("Select number of similar cases to retrieve:", min_value=1, max_value=10, value=5)
-# Function to find multiple relevant cases
-def find_relevant_cases(user_input, cases, num_results=nombres):
-    input_vector = encode_text(user_input)
-    case_vectors = [encode_text(case["case_description"]) for case in cases]
+# Function to find relevant cases (Legalis)
+# Modify find_relevant_cases to handle translation
+def find_relevant_cases(user_input, cases, num_results=5, language="English"):
+    # Translate user input to English if it's in Hindi or Marathi
+    if language in ["Hindi", "Marathi"]:
+        user_input = translator.translate(user_input, dest="en").text
+
+    input_vector = encode_text(user_input, tokenizer_legalis, model_legalis)
+    case_vectors = [encode_text(case["case_description"], tokenizer_legalis, model_legalis) for case in cases]
     similarities = [cosine_similarity(input_vector, case_vec)[0][0] for case_vec in case_vectors]
     
     # Get top N cases with highest similarity scores
@@ -41,59 +64,136 @@ def find_relevant_cases(user_input, cases, num_results=nombres):
     
     return results
 
+
+# Function to find relevant FAQ (FAQ Model)
+# Modify find_relevant_faq to handle translation
+def find_relevant_faq(query, faq_data, num_results=5, language="English"):
+    # Translate query to English if it's in Hindi or Marathi
+    if language in ["Hindi", "Marathi"]:
+        query = translator.translate(query, dest="en").text
+
+    faq_prompts = [faq["prompt"] for faq in faq_data]
+    faq_embeddings = np.array([encode_text(prompt, tokenizer_faq, model_faq) for prompt in faq_prompts])
+    
+    query_embedding = encode_text(query, tokenizer_faq, model_faq)
+    
+    similarities = [cosine_similarity(query_embedding, faq_embedding)[0][0] for faq_embedding in faq_embeddings]
+    
+    top_indices = np.argsort(similarities)[-num_results:][::-1]
+    
+    results = []
+    for index in top_indices:
+        faq = faq_data[index]
+        results.append({
+            "faq": faq,
+            "similarity_score": similarities[index]
+        })
+    
+    return results
+
 # Streamlit UI
-st.title("LegalisAI: Real Estate Legal Case Assistant ⚖️ ")
+st.title("LegalisAI: Real Estate Legal Case Assistant ⚖️")
 
-if "case_index" not in st.session_state:
-    st.session_state.case_index = 0
+# Language Selection
+language = st.selectbox("Choose Language", ["English", "Hindi", "Marathi"])
 
-user_input = st.text_area("Enter your case description:", height=150)
+def translate_text(text, dest_language):
+    if dest_language == "English":
+        return text
+    lang_code = {"Hindi": "hi", "Marathi": "mr"}.get(dest_language, "en")
+    return translator.translate(text, dest=lang_code).text
 
-if st.button("Analyse Case"):
-    if user_input.strip():
-        st.session_state.results = find_relevant_cases(user_input, cases_data)
-        st.session_state.case_index = 0  # Reset index when new search is made
+# Model selection (Case or FAQ)
+model_choice = st.selectbox(translate_text("Choose what you'd like to analyze:", language), ["Legal Cases", "FAQs"])
 
-# Display Retrieved Cases
-if "results" in st.session_state and st.session_state.results:
-    result = st.session_state.results[st.session_state.case_index]
-    best_case = result["case"]
-    similarity_score = result["similarity_score"]
+if model_choice == "Legal Cases":
+    user_input = st.text_area(translate_text("Enter your case description:", language), height=150)
+    nombres = st.slider(translate_text("Select number of similar cases to retrieve:", language), min_value=1, max_value=10, value=5)
 
-    st.subheader(f"🔎 Case {st.session_state.case_index + 1} of {len(st.session_state.results)}")
-    st.write(f"**Case ID:** {best_case['case_id']}")
-    st.write(f"**Case Title:** {best_case['case_title']}")
-    st.write(f"**Case PDF Link:** [Read More Here...]( {best_case['case_link']} )")
-    st.write(f"**Relevancy Score:** {round(similarity_score, 2)}")
-    st.write("---")
+    if st.button(translate_text("Analyze Case", language)):
+        if user_input.strip():
+            st.session_state.results = find_relevant_cases(user_input, cases_data, nombres, language)  # Pass language here
+            st.session_state.case_index = 0  # Reset index when new search is made
 
-    st.subheader("📜 Relevant Sections:")
-    for section in best_case["sections"]:
-        st.markdown(f"**🆔 {section['section_id']} - {section['section_title']}**")
-        st.write(section["section_description"])
+    # Display Retrieved Cases
+    if "results" in st.session_state and st.session_state.results:
+        result = st.session_state.results[st.session_state.case_index]
+        best_case = result["case"]
+        similarity_score = result["similarity_score"]
+
+        st.subheader(translate_text("🔎 Case", language) + f" {st.session_state.case_index + 1} of {len(st.session_state.results)}")
+        st.write(f"**{translate_text('Case ID:', language)}** {translate_text(best_case['case_title'], language)}")
+        st.write(f"**{translate_text('Case Title:', language)}** {translate_text(best_case['case_title'],language)}")
+        st.write(f"**{translate_text('Case PDF Link:', language)}** [{translate_text('Read More Here...', language)}]({best_case['case_link']})")
+        st.write(f"**{translate_text('Relevancy Score:', language)}** {translate_text(str(round(float(similarity_score), 2)), language)}")
         st.write("---")
 
-    st.subheader("✅ Top Strong Points:")
-    for point in best_case["strong_points"][:5]:
-        st.write(f"- {point}")
+        st.subheader(translate_text("📜 Relevant Sections:", language))
+        for section in best_case["sections"]:
+            st.markdown(f"**🆔 {translate_text(section['section_id'], language)} - {translate_text(section['section_title'], language)}**")
+            st.write(translate_text(section["section_description"], language))
+            st.write("---")
 
-    st.subheader("⚠️ Top Weak Points:")
-    for point in best_case["weak_points"][:5]:
-        st.write(f"- {point}")
+        st.subheader(translate_text("✅ Top Strong Points:", language))
+        for point in best_case["strong_points"][:5]:
+            st.write(f"- {translate_text(point, language)}")
 
-    # Navigation Buttons
-    col1, col2 = st.columns(2)
+        st.subheader(translate_text("⚠️ Top Weak Points:", language))
+        for point in best_case["weak_points"][:5]:
+            st.write(f"- {translate_text(point, language)}")
 
-    with col1:
-        if st.session_state.case_index > 0:
-            if st.button("⬅️ Previous"):
-                st.session_state.case_index -= 1
-                st.rerun()
 
-    with col2:
-        if st.session_state.case_index < len(st.session_state.results) - 1:
-            if st.button("Next ➡️"):
-                st.session_state.case_index += 1
+        # Navigation Buttons
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.session_state.case_index > 0:
+                if st.button(translate_text("⬅️ Previous",language)):
+                    st.session_state.case_index -= 1
+                    st.rerun()
+
+        with col2:
+            if st.session_state.case_index < len(st.session_state.results) - 1:
+                if st.button(translate_text("Next ➡️",language)):
+                    st.session_state.case_index += 1
+                    st.rerun()
+
+elif model_choice == translate_text("FAQs", language):
+    faq_query = st.text_area(translate_text("Enter your question or query for FAQ:", language), height=150)
+    faq_nombres = st.slider(translate_text("Select number of similar FAQs to retrieve:", language), min_value=1, max_value=10, value=5)
+
+    if st.button(translate_text("Search FAQ", language)):
+        if faq_query.strip():
+            st.session_state.faq_results = find_relevant_faq(faq_query, faq_data, faq_nombres, language)  # Pass language here
+            st.session_state.faq_index = 0  # Reset index when new search is made
+
+    # Display Retrieved FAQs
+    if "faq_results" in st.session_state and st.session_state.faq_results:
+        result = st.session_state.faq_results[st.session_state.faq_index]
+        best_faq = result["faq"]
+        similarity_score = result["similarity_score"]
+
+        st.subheader(translate_text(f"🔎 FAQ {st.session_state.faq_index + 1} of {len(st.session_state.faq_results)}", language))
+        st.write(f"**{translate_text('FAQ Question:', language)}** {best_faq['prompt']}")
+        st.write(f"**{translate_text('Relevancy Score:', language)}** {round(similarity_score, 2)}")
+        st.write("---")
+
+        st.subheader(translate_text("💡 Answer:", language))
+        st.write(best_faq["completion"])  # Displaying the completion instead of answer
+
+        # Navigation Buttons for FAQ
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.session_state.faq_index > 0:
+                if st.button(translate_text("⬅️ Previous FAQ", language)):
+                    st.session_state.faq_index -= 1
+                    st.rerun()
+
+        with col2:
+            if st.session_state.faq_index < len(st.session_state.faq_results) - 1:
+                if st.button(translate_text("Next FAQ ➡️", language)):
+                    st.session_state.faq_index += 1
                 st.rerun()
 
 footer = """
