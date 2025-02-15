@@ -11,8 +11,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 app = FastAPI()
 
 # Paths to your models
-legalis_model_path = "../legalis_model"
-faq_model_path = "../faq_model"
+legalis_model_path = "./legalis_model"
+faq_model_path = "./faq_model"
 
 # Load tokenizers and models for both Legalis and FAQ
 tokenizer_legalis = AutoTokenizer.from_pretrained(legalis_model_path)
@@ -22,12 +22,12 @@ tokenizer_faq = AutoTokenizer.from_pretrained(faq_model_path)
 model_faq = AutoModel.from_pretrained(faq_model_path)
 
 # Load Legalis Data from JSON
-with open('../finalcases.json', 'r') as f:
+with open('./finalcases.json', 'r') as f:
     cases_data = json.load(f)  # This assumes the JSON is an array of case objects.
 
 # Load FAQ Data from JSONL
 faq_data = []
-with jsonlines.open('../QandA.jsonl') as reader:
+with jsonlines.open('./QandA.jsonl') as reader:
     for obj in reader:
         faq_data.append(obj)
 
