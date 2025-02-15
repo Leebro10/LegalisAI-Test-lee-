@@ -11,8 +11,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 app = FastAPI()
 
 # Paths to your models
-legalis_model_path = "legalis_model"
-faq_model_path = "faq_model"
+legalis_model_path = "Getes07/legalis_model"
+faq_model_path = "Getes07/faq_model"
 
 # Load tokenizers and models for both Legalis and FAQ
 tokenizer_legalis = AutoTokenizer.from_pretrained(legalis_model_path)
