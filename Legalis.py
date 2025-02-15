@@ -126,6 +126,7 @@ if model_choice == "Legal Cases":
         st.write(f"**{translate_text('Case Title:', language)}** {translate_text(best_case['case_title'],language)}")
         st.write(f"**{translate_text('Case PDF Link:', language)}** [{translate_text('Read More Here...', language)}]({best_case['case_link']})")
         st.write(f"**{translate_text('Relevancy Score:', language)}** {translate_text(str(round(float(similarity_score), 2)), language)}")
+
         st.write("---")
 
         st.subheader(translate_text("📜 Relevant Sections:", language))
