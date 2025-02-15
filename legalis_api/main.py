@@ -1,12 +1,10 @@
-import os
-import base64
 import json
 import jsonlines
-import torch
-import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import torch
 from transformers import AutoTokenizer, AutoModel
+import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
 # Initialize FastAPI app
@@ -23,26 +21,15 @@ model_legalis = AutoModel.from_pretrained(legalis_model_path)
 tokenizer_faq = AutoTokenizer.from_pretrained(faq_model_path)
 model_faq = AutoModel.from_pretrained(faq_model_path)
 
-# Function to decode base64 and load the file
-def decode_and_load_base64_file(env_var_name, local_file_path):
-    encoded_data = os.getenv(env_var_name)
-    if encoded_data:
-        # If the environment variable is set, decode and load the file
-        with open(local_file_path, 'wb') as f:
-            f.write(base64.b64decode(encoded_data))
-        print(f"File decoded from env var and saved as {local_file_path}")
-    else:
-        print(f"Loading file from local path: {local_file_path}")
-    
-    # Load the JSON data from the file
-    with open(local_file_path, 'r') as f:
-        return json.load(f)
+# Load Legalis Data from JSON
+with open('legalis_training.json', 'r') as f:
+    cases_data = json.load(f)  # This assumes the JSON is an array of case objects.
 
-# Load Legalis Data from JSON (via environment variable or local file)
-cases_data = decode_and_load_base64_file('LEGALIS_TRAINING_JSON', 'legalis_training.json')
-
-# Load FAQ Data from JSONL (via environment variable or local file)
-faq_data = decode_and_load_base64_file('FAQ_TRAINING_JSON', 'faq_training.jsonl')
+# Load FAQ Data from JSONL
+faq_data = []
+with jsonlines.open('faq_training.jsonl') as reader:
+    for obj in reader:
+        faq_data.append(obj)
 
 # Pydantic model for the request body
 class TextRequest(BaseModel):
