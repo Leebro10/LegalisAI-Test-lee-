@@ -121,3 +121,7 @@ async def predict(request: TextRequest):
     except Exception as e:
         print(f"Error: {e}")  # Log the error
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+#curl -X POST "http://127.0.0.1:8000/predict/" -H "Content-Type: application/json" -d "{\"text\": \"What is the procedure for property registration?\", \"model_choice\": \"legalis\"}"
+#curl -X POST "http://127.0.0.1:8000/predict/" -H "Content-Type: application/json" -d "{\"text\": \"How do I register a property in Maharashtra?\", \"model_choice\": \"faq\"}"
