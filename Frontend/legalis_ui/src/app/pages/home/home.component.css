@@ -1,0 +1,7 @@
+/* Apply black background to the entire body */
+body {
+    background-color: #000000; /* Black background */
+    color: #28A745; /* Soft Green text color (if needed) */
+    font-family: 'Ubuntu', sans-serif;
+  }
+  
