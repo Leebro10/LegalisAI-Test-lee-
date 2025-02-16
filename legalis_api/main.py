@@ -1,4 +1,4 @@
-import json
+import json   #Basically Created this file with the idea that could host api via a backend host..but sticking with locally due to resource constraints
 import jsonlines
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -93,12 +93,12 @@ def find_relevant_faq(query, faq_data, num_results=5):
     return results
 
 # Root endpoint for checking if the API is up
-@app.get("/")
+@app.get("/")   #Using GET Request here as a root (testing api connection)
 async def read_root():
     return {"message": "Welcome to the Legalis AI API!"}
 
 # Prediction endpoint (POST)
-@app.post("/predict/")
+@app.post("/predict/")   #Prime fetch...POST Request
 async def predict(request: TextRequest):
     try:
         # Your existing prediction code
@@ -122,6 +122,8 @@ async def predict(request: TextRequest):
         print(f"Error: {e}")  # Log the error
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+
+#Testing locally Command:
 
 #curl -X POST "http://127.0.0.1:8000/predict/" -H "Content-Type: application/json" -d "{\"text\": \"What is the procedure for property registration?\", \"model_choice\": \"legalis\"}"
 #curl -X POST "http://127.0.0.1:8000/predict/" -H "Content-Type: application/json" -d "{\"text\": \"How do I register a property in Maharashtra?\", \"model_choice\": \"faq\"}"
