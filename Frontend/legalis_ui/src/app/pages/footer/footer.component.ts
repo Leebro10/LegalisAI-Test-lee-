@@ -9,7 +9,7 @@ import { Component } from '@angular/core';
 })
 export class FooterComponent {
   currentTemps : any;
-  ngOnInit():void{
-    this.currentTemps = new Date().getFullYear();
+  ngOnInit():void{ 
+    this.currentTemps = new Date().getFullYear();  //for the sys year
   }
 }
