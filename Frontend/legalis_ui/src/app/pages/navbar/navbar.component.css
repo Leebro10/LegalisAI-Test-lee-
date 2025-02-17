@@ -7,21 +7,26 @@
   text-decoration: none;
   font-family: 'Poppins', sans-serif; /* Default for body text */
 }
-nav{
+/* Navbar styles */
+nav {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  padding: 20px;
-  transition: all 0.4s ease;
+  padding: 20px; /* Adjusted padding to give space */
   background-color: black;
+  z-index: 10; /* Ensure the navbar stays on top */
 }
-nav.sticky{
+
+/* Adjust sticky navbar */
+nav.sticky {
   padding: 15px 20px;
   background: #4070f4;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
 }
-nav .nav-content{
+
+/* Navbar content styling */
+nav .nav-content {
   height: 100%;
   max-width: 1200px;
   margin: auto;
@@ -29,22 +34,27 @@ nav .nav-content{
   align-items: center;
   justify-content: space-between;
 }
-nav .logo a{
+
+nav .logo a {
   font-weight: 500;
   font-size: 35px;
   color: #FFFFFF;
 }
-nav.sticky .logo a{
+
+nav.sticky .logo a {
   color: #fff;
 }
-.nav-content .nav-links{
+
+.nav-content .nav-links {
   display: flex;
 }
-.nav-content .nav-links li{
+
+.nav-content .nav-links li {
   list-style: none;
   margin: 0 8px;
 }
- .nav-links li a{
+
+.nav-links li a {
   text-decoration: none;
   color: #FFFFFF;
   font-size: 18px;
@@ -52,16 +62,20 @@ nav.sticky .logo a{
   padding: 10px 4px;
   transition: all 0.3s ease;
 }
- .nav-links li a:hover{
-   color: #4070f4;
- }
- nav.sticky .nav-links li a{
-   color: #fff;
-   transition: all 0.4s ease;
+
+.nav-links li a:hover {
+  color: #4070f4;
 }
- nav.sticky .nav-links li a:hover{
+
+nav.sticky .nav-links li a {
+  color: #fff;
+  transition: all 0.4s ease;
+}
+
+nav.sticky .nav-links li a:hover {
   color: #0E2431;
 }
+
 .home{
   height: 100vh;
   width: 100%;

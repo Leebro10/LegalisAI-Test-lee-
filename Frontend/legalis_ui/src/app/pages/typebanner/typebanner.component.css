@@ -1,0 +1,15 @@
+.typewrite {
+    display: inline-block;
+    font-size: 2em;
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    border-right: 0.1em solid #fff;
+    color: black;
+    padding: 0.5em;
+  }
+  
+  h1 {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
