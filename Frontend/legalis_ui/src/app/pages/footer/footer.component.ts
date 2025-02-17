@@ -8,5 +8,8 @@ import { Component } from '@angular/core';
   styleUrl: './footer.component.css'
 })
 export class FooterComponent {
-
+  currentTemps : any;
+  ngOnInit():void{
+    this.currentTemps = new Date().getFullYear();
+  }
 }
