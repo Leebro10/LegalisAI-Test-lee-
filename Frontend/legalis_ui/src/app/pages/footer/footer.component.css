@@ -10,7 +10,7 @@
     text-align: center;
     padding: 10px;
     font-size: 14px;
-    position: fixed;  /* Makes the footer fixed at the bottom */
+    position: fixed;
     left: 0;  /* Aligns the footer to the left edge */
     bottom: 0;  /* Keeps the footer at the bottom */
     width: 100%;  /* Makes the footer span the full width of the screen */

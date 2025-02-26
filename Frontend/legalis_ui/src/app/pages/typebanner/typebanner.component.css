@@ -1,4 +1,5 @@
 .typewrite {
+    min-height: 2em;
     display: inline-block;
     font-size: 2em;
     font-family: 'Poppins', sans-serif;
