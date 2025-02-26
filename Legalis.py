@@ -5,7 +5,6 @@ from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from googletrans import Translator
-import os
 
 translator = Translator()
 
@@ -20,7 +19,7 @@ tokenizer_faq = AutoTokenizer.from_pretrained(faq_model_path)
 model_faq = AutoModel.from_pretrained(faq_model_path)
 
 # Load cases from JSON
-with open("finalcases.json", "r", encoding="utf-8") as file:
+with open("./Data/finalcases.json", "r", encoding="utf-8") as file:
     cases_data = json.load(file)
 
 # Load FAQ data
@@ -31,7 +30,7 @@ def load_faq_data(file_path):
             faq_data.append(json.loads(line))
     return faq_data
 
-faq_data = load_faq_data("QandA.jsonl")
+faq_data = load_faq_data("./Data/QandA.jsonl")
 
 # Function to encode text using BERT
 def encode_text(text, tokenizer, model):
@@ -41,9 +40,7 @@ def encode_text(text, tokenizer, model):
     return outputs.last_hidden_state.mean(dim=1).numpy()
 
 # Function to find relevant cases (Legalis)
-# Modify find_relevant_cases to handle translation
 def find_relevant_cases(user_input, cases, num_results=5, language="English"):
-    # Translate user input to English if it's in Hindi or Marathi
     if language in ["Hindi", "Marathi"]:
         user_input = translator.translate(user_input, dest="en").text
 
@@ -51,7 +48,6 @@ def find_relevant_cases(user_input, cases, num_results=5, language="English"):
     case_vectors = [encode_text(case["case_description"], tokenizer_legalis, model_legalis) for case in cases]
     similarities = [cosine_similarity(input_vector, case_vec)[0][0] for case_vec in case_vectors]
     
-    # Get top N cases with highest similarity scores
     top_indices = np.argsort(similarities)[-num_results:][::-1]
     
     results = []
@@ -64,11 +60,8 @@ def find_relevant_cases(user_input, cases, num_results=5, language="English"):
     
     return results
 
-
 # Function to find relevant FAQ (FAQ Model)
-# Modify find_relevant_faq to handle translation
 def find_relevant_faq(query, faq_data, num_results=5, language="English"):
-    # Translate query to English if it's in Hindi or Marathi
     if language in ["Hindi", "Marathi"]:
         query = translator.translate(query, dest="en").text
 
@@ -91,31 +84,33 @@ def find_relevant_faq(query, faq_data, num_results=5, language="English"):
     
     return results
 
-# Streamlit UI
+# Streamlit UI with Sidebar
 st.title("LegalisAI: Real Estate Legal Case Assistant ⚖️")
 
-# Language Selection
-language = st.selectbox("Choose Language", ["English", "Hindi", "Marathi"])
+# Sidebar
+with st.sidebar:
+    # Language Selection
+    language = st.selectbox("Choose Language", ["English", "Hindi", "Marathi"])
+    # Model selection (Case or FAQ)
+    model_choice = st.selectbox("Choose what you'd like to analyze:", ["Legal Cases", "FAQs"])
 
+# Function to translate text
 def translate_text(text, dest_language):
     if dest_language == "English":
         return text
     lang_code = {"Hindi": "hi", "Marathi": "mr"}.get(dest_language, "en")
     return translator.translate(text, dest=lang_code).text
 
-# Model selection (Case or FAQ)
-model_choice = st.selectbox(translate_text("Choose what you'd like to analyze:", language), ["Legal Cases", "FAQs"])
-
+# Case analysis UI
 if model_choice == "Legal Cases":
     user_input = st.text_area(translate_text("Enter your case description:", language), height=150)
     nombres = st.slider(translate_text("Select number of similar cases to retrieve:", language), min_value=1, max_value=10, value=5)
 
     if st.button(translate_text("Analyze Case", language)):
         if user_input.strip():
-            st.session_state.results = find_relevant_cases(user_input, cases_data, nombres, language)  # Pass language here
+            st.session_state.results = find_relevant_cases(user_input, cases_data, nombres, language)
             st.session_state.case_index = 0  # Reset index when new search is made
 
-    # Display Retrieved Cases
     if "results" in st.session_state and st.session_state.results:
         result = st.session_state.results[st.session_state.case_index]
         best_case = result["case"]
@@ -123,9 +118,9 @@ if model_choice == "Legal Cases":
 
         st.subheader(translate_text("🔎 Case", language) + f" {st.session_state.case_index + 1} of {len(st.session_state.results)}")
         st.write(f"**{translate_text('Case ID:', language)}** {translate_text(best_case['case_title'], language)}")
-        st.write(f"**{translate_text('Case Title:', language)}** {translate_text(best_case['case_title'],language)}")
+        st.write(f"**{translate_text('Case Title:', language)}** {translate_text(best_case['case_title'], language)}")
         st.write(f"**{translate_text('Case PDF Link:', language)}** [{translate_text('Read More Here...', language)}]({best_case['case_link']})")
-        st.write(f"**{translate_text('Relevancy Score:', language)}** {translate_text(str(round(float(similarity_score), 2)), language)}")
+        st.write(f"**{translate_text('Relevancy Score:', language)}** {round(similarity_score, 2)}")
 
         st.write("---")
 
@@ -143,32 +138,30 @@ if model_choice == "Legal Cases":
         for point in best_case["weak_points"][:5]:
             st.write(f"- {translate_text(point, language)}")
 
-
         # Navigation Buttons
         col1, col2 = st.columns(2)
-
         with col1:
             if st.session_state.case_index > 0:
-                if st.button(translate_text("⬅️ Previous",language)):
+                if st.button(translate_text("⬅️ Previous", language)):
                     st.session_state.case_index -= 1
                     st.rerun()
 
         with col2:
             if st.session_state.case_index < len(st.session_state.results) - 1:
-                if st.button(translate_text("Next ➡️",language)):
+                if st.button(translate_text("Next ➡️", language)):
                     st.session_state.case_index += 1
                     st.rerun()
 
-elif model_choice == translate_text("FAQs", language):
+# FAQ analysis UI
+elif model_choice == "FAQs":
     faq_query = st.text_area(translate_text("Enter your question or query for FAQ:", language), height=150)
     faq_nombres = st.slider(translate_text("Select number of similar FAQs to retrieve:", language), min_value=1, max_value=10, value=5)
 
     if st.button(translate_text("Search FAQ", language)):
         if faq_query.strip():
-            st.session_state.faq_results = find_relevant_faq(faq_query, faq_data, faq_nombres, language)  # Pass language here
+            st.session_state.faq_results = find_relevant_faq(faq_query, faq_data, faq_nombres, language)
             st.session_state.faq_index = 0  # Reset index when new search is made
 
-    # Display Retrieved FAQs
     if "faq_results" in st.session_state and st.session_state.faq_results:
         result = st.session_state.faq_results[st.session_state.faq_index]
         best_faq = result["faq"]
@@ -184,7 +177,6 @@ elif model_choice == translate_text("FAQs", language):
 
         # Navigation Buttons for FAQ
         col1, col2 = st.columns(2)
-
         with col1:
             if st.session_state.faq_index > 0:
                 if st.button(translate_text("⬅️ Previous FAQ", language)):
@@ -195,7 +187,7 @@ elif model_choice == translate_text("FAQs", language):
             if st.session_state.faq_index < len(st.session_state.faq_results) - 1:
                 if st.button(translate_text("Next FAQ ➡️", language)):
                     st.session_state.faq_index += 1
-                st.rerun()
+                    st.rerun()
 
 footer = """
 <style>
@@ -218,5 +210,6 @@ footer = """
 """
 
 st.markdown(footer, unsafe_allow_html=True)
+
 
 # Legalis Team ~ Aarol D'Souza | Ananya Solanki | Leander Braganza | 24-25
