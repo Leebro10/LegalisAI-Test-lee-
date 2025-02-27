@@ -5,8 +5,16 @@ from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from googletrans import Translator
+from functools import lru_cache
 
 translator = Translator()
+
+@lru_cache(maxsize=100)
+def translate_text(text, dest_language):
+    if dest_language == "English":
+        return text
+    lang_code = {"Hindi": "hi", "Marathi": "mr"}.get(dest_language, "en")
+    return translator.translate(text, dest=lang_code).text
 
 # Load the trained models and tokenizers
 legalis_model_path = "./legalis_model"
@@ -39,14 +47,21 @@ def encode_text(text, tokenizer, model):
         outputs = model(**inputs)
     return outputs.last_hidden_state.mean(dim=1).numpy()
 
+# Precompute and store case embeddings
+case_vectors = {case["case_id"]: encode_text(case["case_description"], tokenizer_legalis, model_legalis) for case in cases_data}
+
+# Precompute and store FAQ embeddings
+faq_embeddings = {faq["prompt"]: encode_text(faq["prompt"], tokenizer_faq, model_faq) for faq in faq_data}
+
+
 # Function to find relevant cases (Legalis)
 def find_relevant_cases(user_input, cases, num_results=5, language="English"):
     if language in ["Hindi", "Marathi"]:
-        user_input = translator.translate(user_input, dest="en").text
+        user_input = translate_text(user_input, "English")
 
     input_vector = encode_text(user_input, tokenizer_legalis, model_legalis)
-    case_vectors = [encode_text(case["case_description"], tokenizer_legalis, model_legalis) for case in cases]
-    similarities = [cosine_similarity(input_vector, case_vec)[0][0] for case_vec in case_vectors]
+    #case_vectors = [encode_text(case["case_description"], tokenizer_legalis, model_legalis) for case in cases]
+    similarities = cosine_similarity(input_vector, np.vstack(list(case_vectors.values()))).flatten()
     
     top_indices = np.argsort(similarities)[-num_results:][::-1]
     
@@ -63,10 +78,10 @@ def find_relevant_cases(user_input, cases, num_results=5, language="English"):
 # Function to find relevant FAQ (FAQ Model)
 def find_relevant_faq(query, faq_data, num_results=5, language="English"):
     if language in ["Hindi", "Marathi"]:
-        query = translator.translate(query, dest="en").text
+        query = translate_text(user_input, "English")
 
     faq_prompts = [faq["prompt"] for faq in faq_data]
-    faq_embeddings = np.array([encode_text(prompt, tokenizer_faq, model_faq) for prompt in faq_prompts])
+    #faq_embeddings = np.array([encode_text(prompt, tokenizer_faq, model_faq) for prompt in faq_prompts])
     
     query_embedding = encode_text(query, tokenizer_faq, model_faq)
     
@@ -99,19 +114,7 @@ def translate_text(text, dest_language):
     if dest_language == "English":
         return text
     lang_code = {"Hindi": "hi", "Marathi": "mr"}.get(dest_language, "en")
-    
-    try:
-        translated_text = translator.translate(text, dest=lang_code).text
-        if translated_text:
-            return translated_text
-        else:
-            # Fallback if translation is None
-            return text
-    except Exception as e:
-        # Handle translation errors gracefully
-        st.error(f"Translation failed: {str(e)}")
-        return text
-
+    return translate_text(user_input, "English")
 
 # Case analysis UI
 if model_choice == "Legal Cases":
@@ -123,7 +126,7 @@ if model_choice == "Legal Cases":
             st.session_state.results = find_relevant_cases(user_input, cases_data, nombres, language)
             st.session_state.case_index = 0  # Reset index when new search is made
 
-    if "results" in st.session_state and st.session_state.results:
+    if st.session_state.get("results", []):
         result = st.session_state.results[st.session_state.case_index]
         best_case = result["case"]
         similarity_score = result["similarity_score"]
@@ -174,19 +177,18 @@ elif model_choice == "FAQs":
             st.session_state.faq_results = find_relevant_faq(faq_query, faq_data, faq_nombres, language)
             st.session_state.faq_index = 0  # Reset index when new search is made
 
-    if "faq_results" in st.session_state and st.session_state.faq_results:
+    if st.session_state.get("faq_results", []):
         result = st.session_state.faq_results[st.session_state.faq_index]
         best_faq = result["faq"]
         similarity_score = result["similarity_score"]
 
         st.subheader(translate_text(f"🔎 FAQ {st.session_state.faq_index + 1} of {len(st.session_state.faq_results)}", language))
-        st.write(f"**{translate_text('FAQ:', language)}** {translate_text(best_faq['prompt'],language)}")
+        st.write(f"**{translate_text('FAQ Question:', language)}** {best_faq['prompt']}")
         st.write(f"**{translate_text('Relevancy Score:', language)}** {round(similarity_score, 2)}")
         st.write("---")
 
         st.subheader(translate_text("💡 Answer:", language))
-        st.write(f"{translate_text(best_faq["completion"], language)}")
-        #st.write(best_faq["completion"])  # Displaying the completion instead of answer
+        st.write(best_faq["completion"])  # Displaying the completion instead of answer
 
         # Navigation Buttons for FAQ
         col1, col2 = st.columns(2)
@@ -226,4 +228,3 @@ st.markdown(footer, unsafe_allow_html=True)
 
 
 # Legalis Team ~ Aarol D'Souza | Ananya Solanki | Leander Braganza | 24-25
-
